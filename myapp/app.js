@@ -4,16 +4,9 @@ var path = require('path')
 var cookieParser = require('cookie-parser')
 var logger = require('morgan')
 
-
-const passport = require('passport');
-const session = require('express-session');
-const OpenidConnectStrategy = require('passport-openidconnect').Strategy;
-const jwtDecode = require('jwt-decode');
+const { auth } = require('express-openid-connect');
+const fetch = require('node-fetch');
 require('dotenv').config()
-
-
-var indexRouter = require('./routes/index')
-var usersRouter = require('./routes/users')
 
 var app = express()
 
@@ -27,8 +20,42 @@ app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
 app.use(express.static(path.join(__dirname, 'public')))
 
-app.use('/', indexRouter)
-app.use('/users', usersRouter)
+// ===================================
+// ここから追記
+// ===================================
+
+const issuer = 'https://auth.optim.cloud'
+const baseURL = 'http://localhost:3000'
+const clientId = typeof process.env.CLIENT_ID === "undefined" ? '' : process.env.CLIENT_ID
+const clientSecret = typeof process.env.CLIENT_SECRET === "undefined" ? '' : process.env.CLIENT_SECRET
+app.use(auth({
+  issuerBaseURL: issuer,
+  baseURL: baseURL,
+  clientID: clientId,
+  secret: clientSecret,
+  idpLogout: true,
+  authRequired: true,
+  routes:{
+    callback: "/oauth2/callback"
+  },
+  authorizationParams: {
+    response_type: 'code',
+    scope: 'openid user.profile',
+  }
+}))
+
+
+const accountAPI = 'https://accounts.optimcloudapis.com'
+app.get('/', async (req, res) => {
+  let { token_type, access_token } = req.oidc.accessToken;
+  console.log(access_token)
+  const me = await fetch(accountAPI + '/v2/me', {
+    headers: {
+      Authorization: `${token_type} ${access_token}`,
+    },
+  });
+  res.json(await me.json());
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
