@@ -58,18 +58,20 @@ const accountAPI = 'https://accounts.optimcloudapis.com'
 app.get('/', async (req, res) => {
 
   // DBにUser情報を持つ場合は
-  // req.oidc.sub と User情報の紐付けを行うことが出来る
+  // req.oidc.sub と User情報の紐付けを行うことが出来る（今回は未記述）
   
   // 認可レスポンスに含まれたAccessTokenを利用する
   let { token_type, access_token } = req.oidc.accessToken;
 
-  // AccountAPIを叩く
+  // 個人情報API (`/v2/me`) にアクセスする
   const me = await fetch(accountAPI + '/v2/me', {
     headers: {
       Authorization: `${token_type} ${access_token}`,
     },
   });
-  
+
+  // 本来はViewを返却し、ブラウザからJson文字列を取得しますが
+  // 今回はJson文字列をそのままブラウザへ返却する
   res.json(await me.json());
 });
 
